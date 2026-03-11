@@ -31,6 +31,10 @@ con <- dbConnect(MariaDB(),
 
 ## Project Structure
 
-`econ_data_functions` - Core functions for transforming raw FRED data into economic indicators
-`usld` - Pulls and transforms leading variables (e.g. S&P 500) to produce leading indexes
-`usco` - Pulls and transforms lagging variables (e.g. GDP) to produce lagging indexes
+## Project Structure
+
+| File/Module | Description |
+|---|---|
+| `econ_data_functions` | Core functions for transforming raw FRED data into economic indicators |
+| `usld` | Applies transformations to leading variables to produce leading indexes |
+| `usco` | Applies transformations to lagging variables to produce lagging indexes |
