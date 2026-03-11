@@ -29,7 +29,6 @@ con <- dbConnect(MariaDB(),
 ```
 
 
-## Project Structure
 
 ## Project Structure
 
