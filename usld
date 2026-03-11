@@ -1,0 +1,198 @@
+#download libraries
+library(tidyverse)
+library(readr)
+library(dplyr)
+library(readxl)
+library(purrr)
+library(fredr)
+source("econ_data_functions.R")
+library(DBI); library(RMariaDB)
+
+fredr_set_key("_____")
+
+#connect to mariaDB
+con <- dbConnect(MariaDB(),
+                 user = '_____',
+                 password = '_____',
+                 dbname = 'fred',
+                 host = '_____')
+
+#read and format all sheets
+GS10 <- read_fred_from_maria(series_id = "GS10", value_name = "GS10") #same as excel
+TB3MS <- read_fred_from_maria(series_id = "TB3MS", value_name = "TB3MS") #same as excel
+monthly_dates <- monthly_from_quartely_dates(GS10) #create list of months based on awhm
+tsprd <- data.frame(date = monthly_dates) %>% #combine by date, same as excel
+  left_join(GS10 %>% select(date, GS10), by = "date") %>%
+  left_join(TB3MS %>% select(date, `TB3MS`), by = "date") 
+
+AWHMAN <- read_fred_from_maria(series_id = "AWHMAN", value_name = "AWHMAN") #same as excel
+
+
+ICSA <- pad_fred(read_fred_from_maria(series_id = "ICSA"), dbReadTable(con, "AWIC")) %>% rename(ICSA = value)#reads the data from fred and csv and pads it
+ICSA <- ICSA %>% #averages out weekly data into monthly, becomes the same as excel starting at 1967
+  mutate(month = floor_date(date, "month")) %>%
+  group_by(month) %>%
+  summarise(ICSA = mean(ICSA, na.rm = TRUE)) %>%
+  ungroup() %>%
+  rename(date = month)
+
+
+ACDGNO <- pad_fred(read_fred_from_maria(series_id = "ACDGNO"), dbReadTable(con, "MNOCG")) %>% rename(ACDGNO = value)#reads the data from fred and csv and pads it
+write_csv(ACDGNO %>% filter(date >= "1959-01-01"),
+  "ACDGNO_260208.csv"
+)
+
+ANDENO <- pad_fred(read_fred_from_maria(series_id = "ANDENO"), dbReadTable(con, "NOCG")) %>% rename(ANDENO = value)#reads the data from fred and csv and pads it
+write_csv(ANDENO %>% filter(date >= "1959-01-01"),
+          "ANDENO_260208.csv"
+)
+
+napm_no <- dbReadTable(con, "NAPMNO") %>% rename(napm_no = value) #get from ISM and change name
+napm_inven <- dbReadTable(con, "NAPMINVEN") %>% rename(napm_inven = value) #get from ISM and change name
+napm_vp <- dbReadTable(con, "NAPMVP") %>% rename(napm_vp = value) #get from ISM and change name
+
+sp500 <- pad_fred(read_fred_from_maria(series_id = "sp500"), dbReadTable(con, "SPX")) %>% rename(sp500 = value)#reads the data from fred and csv and pads it
+sp500 <- sp500 %>% #averages out weekly data into monthly, becomes the same as excel, but starts at 2015
+  mutate(month = floor_date(date, "month")) %>%
+  group_by(month) %>%
+  summarise(sp500 = mean(sp500, na.rm = TRUE)) %>%
+  ungroup() %>%
+  rename(date = month)
+
+PINDUINDEXM <- pad_fred(read_fred_from_maria(series_id = "PINDUINDEXM"), dbReadTable(con, "CRB")) %>% rename(PINDUINDEXM = value)#reads the data from fred and csv and pads it
+write_csv(PINDUINDEXM,"PINDUINDEXM_260208.csv")
+
+AAA <- read_fred_from_maria(series_id = "AAA", value_name = "AAA") #same as excel
+BAA <- read_fred_from_maria(series_id = "BAA", value_name = "BAA") #same as excel
+RSPRD <- data.frame(date = monthly_dates) %>% # this should be a data frame with a 'date' column
+  left_join(AAA %>% select(date, AAA), by = "date") %>%
+  mutate(AAA = case_when(
+    date < as.Date("2001-12-01") ~ AAA - 0.44, #subtract -44 from all values starting at November 2001 
+    TRUE ~ AAA)) %>% 
+  left_join(BAA %>% select(date, BAA), by = "date") #combine by date
+
+
+PERMIT <- pad_fred(read_fred_from_maria(series_id = "PERMIT"), dbReadTable(con, "HSBP")) %>% rename(PERMIT = value)#reads the data from fred and csv and pads it
+CUUR0000SAS <- read_fred_from_maria(series_id = "CUUR0000SAS", value_name = "CUUR0000SAS") #same as excel
+M2REAL <- read_fred_from_maria(series_id = "M2REAL", value_name = "M2REAL") #very similar to excel 
+exp <- dbReadTable(con, "EXP") %>% rename(exp = value) #find the source
+
+GDPDEF <- read_fred_from_maria(series_id = "GDPDEF", value_name = "GDPDEF") #same as excel
+ULCNFB <- read_fred_from_maria(series_id = "ULCNFB", value_name = "ULCNFB") #very similar to excel 
+pulcq <- data.frame(date = GDPDEF$date) %>% #combine by date, almost identical to excel
+  left_join(GDPDEF %>% select(date, GDPDEF), by = "date") %>%
+  left_join(ULCNFB %>% select(date, ULCNFB), by = "date")
+
+IPMAN <- pad_fred(read_fred_from_maria(series_id = "IPMAN"), dbReadTable(con, "IPMFG")) %>% rename(IPMAN = value)#reads the data from fred and csv and pads it
+DMANEMP <- read_fred_from_maria(series_id = "DMANEMP", value_name = "DMANEMP") #very similar to excel 
+NDMANEMP <- read_fred_from_maria(series_id = "NDMANEMP", value_name = "NDMANEMP") #very similar to excel 
+AWHMAN <- pad_fred(read_fred_from_maria(series_id = "AWHMAN"), dbReadTable(con, "AWWMFG")) %>% rename(AWHMAN = value)#reads the data from fred and csv and pads it
+MFG_PROD <- data.frame(date = monthly_dates) %>%
+  left_join(IPMAN %>% select(date, IPMAN), by = "date") %>% #combine by date
+  left_join(DMANEMP %>% select(date, DMANEMP), by = "date") %>%
+  left_join(NDMANEMP %>% select(date, NDMANEMP), by = "date") %>%
+  left_join(AWHMAN %>% select(date, AWHMAN), by = "date")
+  
+
+#calculations for all sheets
+AWHMAN <- chg(AWHMAN, "AWHMAN" , subtract = TRUE)
+ICSA <- chg(ICSA, "ICSA", inv = TRUE,pct = TRUE)
+ACDGNO <- chg(ACDGNO, "ACDGNO", pct = TRUE)
+ANDENO <- chg(ANDENO, "ANDENO", pct = TRUE, ave_dev = TRUE)
+napm_no <- chg(napm_no, "napm_no", abs = FALSE, subtract = TRUE)
+napm_inven <- chg(napm_inven, "napm_inven", subtract = TRUE)
+napm_vp <- chg(napm_vp, "napm_vp", subtract = TRUE)
+sp500 <- chg(sp500, "sp500", pct = TRUE)
+PINDUINDEXM <- ann_ave(PINDUINDEXM, "PINDUINDEXM", "PINDUINDEXMgr")
+PINDUINDEXM <- chg(PINDUINDEXM, "PINDUINDEXMgr", subtract = TRUE)
+RSPRD <- div(RSPRD, "BAA","AAA", "risk")
+RSPRD <- chg(RSPRD, "risk", subtract = TRUE, inv = TRUE)
+tsprd <- subtract(tsprd, "GS10", "TB3MS", "tsprd") %>%
+  mutate(minus_1 = tsprd - 1) %>%
+  mutate(st_chg = minus_1/ave_dev(minus_1))
+PERMIT <- chg(PERMIT, "PERMIT", pct = TRUE)
+BAA <- chg(BAA, "BAA", subtract = TRUE, inv = TRUE)
+CUUR0000SAS <- ann_ave(CUUR0000SAS, "CUUR0000SAS", "CUUR0000SAS_gr")
+CUUR0000SAS <- chg(CUUR0000SAS, "CUUR0000SAS_gr", subtract = TRUE, inv = TRUE)
+M2REAL <- chg(M2REAL, "M2REAL", pct = TRUE)
+exp <- chg(exp, "exp", subtract = TRUE)
+pulcq <- div(pulcq, "GDPDEF","ULCNFB", "pulcq", 100) 
+pulcq <- chg(pulcq, "pulcq", subtract = TRUE) %>%
+  mutate(log_GDPDEF = log(GDPDEF/lag(GDPDEF)), log_ULCNFB = log(ULCNFB/lag(ULCNFB)))
+pulcm <- q_to_m(monthly_from_quartely_dates(pulcq), pulcq, df_variable = st_chg, new_df_variable = chg_mth)#create a monthly version of pulcq
+MFG_PROD <- MFG_PROD %>%
+  mutate(empl_mfg = DMANEMP + NDMANEMP) %>% 
+  select(-AWHMAN, AWHMAN) %>%
+  mutate(empl_hrs_mfg = AWHMAN*52*empl_mfg/1000000, MFG_PROD = IPMAN/empl_hrs_mfg)
+MFG_PROD <- ann_ave_alt(MFG_PROD, "MFG_PROD", "mpgr")
+MFG_PROD <- chg(MFG_PROD, "mpgr", subtract = TRUE)
+
+#calc
+
+#finds the max length of all data frames
+max_len <- max(length(monthly_dates),
+               length(AWHMAN),
+               length(ICSA),
+               length(ACDGNO),
+               length(napm_no),
+               length(napm_inven),
+               length(napm_vp),
+               length(sp500),
+               length(PINDUINDEXM),
+               length(RSPRD),
+               length(tsprd),
+               length(PERMIT),
+               length(BAA),
+               length(CUUR0000SAS),
+               length(M2REAL),
+               length(exp),
+               length(pulcm),
+               length(MFG_PROD))
+
+#adds values from all of the data frames into a new data frame
+usld_calc <- tibble(date = monthly_dates) %>%
+  left_join(AWHMAN %>% select(date, st_chg) %>% rename(AWHMAN_chg = st_chg), by = "date") %>%
+  left_join(ICSA %>% select(date, st_chg) %>% mutate(ICSA_chg = st_chg * -1) %>% select(date, ICSA_chg), by = "date") %>%
+  left_join(ACDGNO %>% select(date, st_chg) %>% rename(ACDGNO_chg = st_chg), by = "date") %>%
+  left_join(ANDENO %>% select(date, st_chg) %>% rename(ANDENO_chg = st_chg), by = "date") %>%
+  left_join(napm_no %>% select(date, st_chg) %>% rename(napm_no_chg = st_chg), by = "date") %>%
+  left_join(napm_inven %>% select(date, st_chg) %>% rename(napm_inven_chg = st_chg), by = "date") %>%
+  left_join(napm_vp %>% select(date, st_chg) %>% rename(napm_vp_chg = st_chg), by = "date") %>%
+  left_join(sp500 %>% select(date, st_chg) %>% rename(sp500_chg = st_chg), by = "date") %>%
+  left_join(PINDUINDEXM %>% select(date, st_chg) %>% rename(PINDUINDEXM_chg = st_chg), by = "date") %>%
+  left_join(RSPRD %>% select(date, st_chg) %>% mutate(RSPRD_chg = st_chg * -1) %>% select(date, RSPRD_chg), by = "date") %>%
+  left_join(BAA %>% select(date, st_chg) %>% mutate(BAA_chg = st_chg * -1) %>% select(date, BAA_chg), by = "date") %>%
+  left_join(tsprd %>% select(date, st_chg) %>% rename(tsprd_chg = st_chg), by = "date") %>%
+  left_join(CUUR0000SAS %>% select(date, st_chg) %>% mutate(CUUR0000SAS_chg = st_chg * -1) %>% select(date, CUUR0000SAS_chg), by = "date") %>%
+  left_join(PERMIT %>% select(date, st_chg) %>% rename(PERMIT_chg = st_chg), by = "date") %>%
+  left_join(exp %>% select(date, st_chg) %>% rename(exp_chg = st_chg), by = "date") %>%
+  left_join(M2REAL %>% select(date, st_chg) %>% rename(M2REAL_chg = st_chg), by = "date") %>%
+  left_join(pulcm %>% select(date, chg_mth), by = "date") %>%
+  left_join(MFG_PROD %>% select(date, st_chg) %>% rename(MFG_PROD_chg = st_chg), by = "date")
+
+#names all of the columns in the usco calc data frame
+names(usld_calc) <- c(
+  "date", "AWHMAN", "ICSA", "ACDGNO", "nocg", "napm_no",
+  "napm_inven", "napm_vp", "sp500", "PINDUINDEXM", "RSPRD", "BAA", "tsprd", "CUUR0000SAS",
+  "PERMIT", "exp", "M2REAL", "pulc", "MFG_PROD"
+)
+
+#calculate the averages of several groups of rows
+usld_calc <- ave_rows(usld_calc, 2:19, 9, "tot_chg")
+usld_calc <- ave_rows(usld_calc, 2:11, 5, "schg")
+usld_calc <- ave_rows(usld_calc, 12:19, 4, "lchg")
+usld_calc <- ave_rows(usld_calc, 13:19, 4, "bchg")
+usld_calc <- calc_custom_index(usld_calc, "tot_chg", "tot_indx", 5)
+usld_calc <- calc_custom_index(usld_calc, "schg", "sindx", 1)
+usld_calc <- calc_custom_index(usld_calc, "lchg", "lindx", 63)
+usld_calc <- ann_ave(usld_calc, "tot_indx", "totgr")
+usld_calc <- ann_ave(usld_calc, "tot_indx", "totgr") %>%
+  mutate(totgr = replace(totgr, 1:96, NA))
+usld_calc <- ann_ave(usld_calc, "sindx", "slgr") %>%
+  mutate(slgr = replace(slgr, 1:96, NA))
+usld_calc <- ann_ave(usld_calc, "lindx", "llgr") %>%
+  mutate(llgr = replace(llgr, 1:96, NA))
+
+view(usld_calc)
+
+write.csv(usld_calc, "usld_calc_R_250910.csv", row.names = FALSE)
