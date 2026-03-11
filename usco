@@ -7,7 +7,7 @@ library(purrr)
 library(DBI)
 library(RMariaDB)
 library(fredr)
-source("econ_data_functions 251011.R")
+source("econ_data_functions.R")
 
 fredr_set_key("_____")
 
