@@ -13,10 +13,10 @@ fredr_set_key("_____")
 
 #connect to mariaDB
 con <- dbConnect(MariaDB(),
-                 user = '_____',
-                 password = '_____',
-                 dbname = 'fred',
-                 host = '_____')
+                 user = '_____',        #computer username
+                 password = '_____',    #computer password
+                 dbname = 'fred',       #fred database
+                 host = '_____')        #IP address
 
 #read and format files from fred
 GDPC1 <- read_fred_from_maria(series_id = "GDPC1", value_name = "GDPC1") #same as excel
