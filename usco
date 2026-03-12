@@ -26,9 +26,6 @@ INDPRO <- read_fred_from_maria(series_id = "INDPRO", value_name = "INDPRO") #sim
 PAYEMS <- read_fred_from_maria(series_id = "PAYEMS", value_name = "PAYEMS") #similar to excel
 UNRATE <- read_fred_from_maria(series_id = "UNRATE", value_name = "UNRATE") #same as excel
 
-write.csv(PAYEMS, "PAYEMS_260208.csv", row.names = FALSE)
-write.csv(UNRATE, "UNRATE_260208.csv", row.names = FALSE)
-
 #calculate change, absolute change, standard change and smoothed growth rate for all data
 GDPC1 <- chg(GDPC1, "GDPC1", 157:nrow(GDPC1) , q = TRUE, smgr = FALSE, abs = TRUE, ave_dev = FALSE)
 W875RX1 <- chg(W875RX1, "W875RX1", 26:nrow(W875RX1), smgr = TRUE, abs = TRUE, ave_dev = FALSE)
